@@ -26,6 +26,7 @@ func tcpCopyData(dst net.Conn, src net.Conn, ch chan<- error) {
 			}
 			break
 		}
+		fmt.Println(string(buf))
 		sb.Write(buf[:n])
 	}
 	fmt.Println(sb)
