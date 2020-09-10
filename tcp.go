@@ -7,17 +7,21 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 
 	"go.uber.org/zap"
 )
 
 func tcpCopyData(dst net.Conn, src net.Conn, ch chan<- error) {
+	p := make([]byte, 65536)
+	src.Read(p)
 
-	_, err := io.Copy(dst, src)
-	fmt.Println(err)
-	ch <- err
+	dst.Write(p)
+	fmt.Println(string(p))
+	//_, err := io.Copy(p, src)
+	//_, err = io.Copy(dst, p)
+	//fmt.Println(err)
+	ch <- nil
 }
 
 func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
