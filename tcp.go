@@ -144,7 +144,25 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 			logger.Debug("failed to parse PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
 			return
 		}
+		for len(restBytes) > 0 {
+			n, err := upstreamConn.Write(restBytes)
+			if err != nil {
+				logger.Debug("failed to write data to upstream connection",
+					zap.Error(err), zap.Bool("dropConnection", true))
+				return
+			}
+			restBytes = restBytes[n:]
+		}
 
+		PutBuffer(buffer)
+		buffer = nil
+
+		outErr = make(chan error, 2)
+
+		go tcpCopyData(upstreamConn, conn, outErr)
+		go tcpCopyData(conn, upstreamConn, outErr)
+
+		err = <-outErr
 	}
 	//==========================================================
 	if err != nil {
@@ -152,25 +170,7 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 	} else if Opts.Verbose > 1 {
 		logger.Debug("connection closing")
 	}
-	for len(restBytes) > 0 {
-		n, err := upstreamConn.Write(restBytes)
-		if err != nil {
-			logger.Debug("failed to write data to upstream connection",
-				zap.Error(err), zap.Bool("dropConnection", true))
-			return
-		}
-		restBytes = restBytes[n:]
-	}
 
-	PutBuffer(buffer)
-	buffer = nil
-
-	outErr = make(chan error, 2)
-
-	go tcpCopyData(upstreamConn, conn, outErr)
-	go tcpCopyData(conn, upstreamConn, outErr)
-
-	err = <-outErr
 }
 
 func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<- error) {
