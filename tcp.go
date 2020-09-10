@@ -15,21 +15,20 @@ import (
 )
 
 func tcpCopyData(dst net.Conn, src net.Conn, ch chan<- error) {
+
+	var sb strings.Builder
+	buf := make([]byte, 256)
 	for {
-		var sb strings.Builder
-		buf := make([]byte, 256)
-		for {
-			n, err := src.Read(buf)
-			if err != nil {
-				if err != io.EOF {
-					fmt.Println("read error:", err)
-				}
-				break
+		n, err := src.Read(buf)
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println("read error:", err)
 			}
-			sb.Write(buf[:n])
+			break
 		}
-		fmt.Println(sb)
+		sb.Write(buf[:n])
 	}
+	fmt.Println(sb)
 
 	//_, err := io.Copy(dst, src)
 	//ch <- err
