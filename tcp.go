@@ -113,15 +113,17 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 	go tcpCopyData(conn, upstreamConn, outErr)
 
 	err = <-outErr
+	fmt.Println("1")
 	//第一倫走完=============================================================
 	for {
 		buffer = GetBuffer()
+		fmt.Println("2")
 		defer func() {
 			if buffer != nil {
 				PutBuffer(buffer)
 			}
 		}()
-
+		fmt.Println("3")
 		n, err = conn.Read(buffer)
 		fmt.Println("=======round two=======")
 		fmt.Println(string(buffer))
