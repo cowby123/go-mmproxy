@@ -47,6 +47,7 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 	}
 	fmt.Println("=======round one=======")
 	fmt.Println(string(buffer))
+	fmt.Println("=======round over=======")
 	saddr, _, restBytes, err := PROXYReadRemoteAddr(buffer[:n], TCP)
 	if err != nil {
 		logger.Debug("failed to parse PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
