@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 
@@ -44,7 +45,8 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 		logger.Debug("failed to read PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
 		return
 	}
-
+	fmt.Println("=======round one=======")
+	fmt.Println(string(buffer))
 	saddr, _, restBytes, err := PROXYReadRemoteAddr(buffer[:n], TCP)
 	if err != nil {
 		logger.Debug("failed to parse PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
@@ -121,6 +123,8 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 		}()
 
 		n, err = conn.Read(buffer)
+		fmt.Println("=======round two=======")
+		fmt.Println(string(buffer))
 		if err != nil {
 			logger.Debug("failed to read PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
 			return
