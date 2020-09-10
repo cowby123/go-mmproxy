@@ -6,33 +6,16 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net"
-	"strings"
 
 	"go.uber.org/zap"
 )
 
 func tcpCopyData(dst net.Conn, src net.Conn, ch chan<- error) {
 
-	var sb strings.Builder
-	buf := make([]byte, 256)
-	for {
-		n, err := src.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("read error:", err)
-			}
-			break
-		}
-		fmt.Println(string(buf))
-		sb.Write(buf[:n])
-	}
-	fmt.Println(sb)
-
-	//_, err := io.Copy(dst, src)
-	//ch <- err
+	_, err := io.Copy(dst, src)
+	ch <- err
 }
 
 func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
@@ -61,7 +44,7 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 		logger.Debug("failed to read PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
 		return
 	}
-	fmt.Println(string(buffer))
+
 	saddr, _, restBytes, err := PROXYReadRemoteAddr(buffer[:n], TCP)
 	if err != nil {
 		logger.Debug("failed to parse PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
@@ -128,11 +111,52 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 	go tcpCopyData(conn, upstreamConn, outErr)
 
 	err = <-outErr
+	//第一倫走完=============================================================
+	for {
+		buffer = GetBuffer()
+		defer func() {
+			if buffer != nil {
+				PutBuffer(buffer)
+			}
+		}()
+
+		n, err = conn.Read(buffer)
+		if err != nil {
+			logger.Debug("failed to read PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
+			return
+		}
+		saddr, _, restBytes, err = PROXYReadRemoteAddr(buffer[:n], TCP)
+		if err != nil {
+			logger.Debug("failed to parse PROXY header", zap.Error(err), zap.Bool("dropConnection", true))
+			return
+		}
+
+	}
+	//==========================================================
 	if err != nil {
 		logger.Debug("connection broken", zap.Error(err), zap.Bool("dropConnection", true))
 	} else if Opts.Verbose > 1 {
 		logger.Debug("connection closing")
 	}
+	for len(restBytes) > 0 {
+		n, err := upstreamConn.Write(restBytes)
+		if err != nil {
+			logger.Debug("failed to write data to upstream connection",
+				zap.Error(err), zap.Bool("dropConnection", true))
+			return
+		}
+		restBytes = restBytes[n:]
+	}
+
+	PutBuffer(buffer)
+	buffer = nil
+
+	outErr = make(chan error, 2)
+
+	go tcpCopyData(upstreamConn, conn, outErr)
+	go tcpCopyData(conn, upstreamConn, outErr)
+
+	err = <-outErr
 }
 
 func TCPListen(listenConfig *net.ListenConfig, logger *zap.Logger, errors chan<- error) {
