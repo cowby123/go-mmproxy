@@ -109,11 +109,12 @@ func tcpHandleConnection(conn net.Conn, logger *zap.Logger) {
 	buffer = nil
 
 	outErr := make(chan error, 2)
-
+	fmt.Println("start")
 	go tcpCopyData(upstreamConn, conn, outErr)
 	go tcpCopyData(conn, upstreamConn, outErr)
 
 	err = <-outErr
+	fmt.Println("end")
 	fmt.Println("1")
 	//第一倫走完=============================================================
 	for {
