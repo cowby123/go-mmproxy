@@ -16,6 +16,7 @@ import (
 func tcpCopyData(dst net.Conn, src net.Conn, ch chan<- error) {
 
 	_, err := io.Copy(dst, src)
+	fmt.Println(err)
 	ch <- err
 }
 
